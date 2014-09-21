@@ -33,6 +33,11 @@ Just like pthreads.
 
 Note : 
 
+Please note that this is not a full fledged thread library and only a part of a proof-of-concept
+exercise. Though this library *might give a feel* of a threading environment, it is not designed
+to meet the performance requirement of a threading environment. For example, if one of the 
+threads makes a blocking system call, then all the threads are  blocked.
+
 Please do not handle the SIGALRM signal in your code as this will lead to malfunctioning 
-of the library 
+of the library. 
 
