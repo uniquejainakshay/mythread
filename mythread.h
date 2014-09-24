@@ -48,12 +48,46 @@ jmp_buf jbuf[MAX_THREADS];
 jmp_buf main_buf; 
 //int running[MAX_THREADS];
 
-int thread_pool = 0;
+char thread_pool[MAX_THREADS];
+int allocate_ptr= 5; 
+int isSchedulerRunning = 0; 
 
 queue * thread_queue = NULL;
 
+int allocate_tid(){
+	if ( isSchedulerRunning) 
+		ualarm( 0, 0 ) ; 
+	int tid, i; 
+	for(i = allocate_ptr ; i !=  (allocate_ptr + MAX_THREADS - 1) % MAX_THREADS; i = ( i + 1 ) % MAX_THREADS){
+		if ( thread_pool[ i ] == 0)
+		{
+			allocate_ptr  = i ; 
+			thread_pool[i] = 1;
+			if ( isSchedulerRunning) 
+				ualarm ( 5 * SECOND, 5 * SECOND) ;
+			return i; 
+		}
+	}
+	clean();
+	printf("Max thread capacity exceeded \n");
+	exit(0);
+}
 
 
+/* Decided to abandon this with  the reason that, freeing the used thread space
+ * is the users responsibility and not the threading library 
+void garbage_collector(){
+
+	if ( isSchedulerRunning ) 
+		ualarm ( 0 , 0); 
+
+	
+
+	if ( isSchedulerRunning ) 
+		ualarm ( 5 * SECOND, 5 * SECOND); 
+
+}
+*/
 
 void dispatch(int sig)
 {
@@ -167,8 +201,9 @@ int create(void (*f) ( void )){
 		queue_init(thread_queue);
 	}
 	// choose tid from the thread pool 
-	int tid = thread_pool;
-	thread_pool += 1;
+	//int tid = thread_pool;
+	//thread_pool += 1;
+	int tid = allocate_tid();
 	mythread * tp = ( mythread * ) malloc ( sizeof ( mythread ) ) ; 
 	tp -> thread_id = tid;
 	tp -> hasContext = 0;
@@ -195,8 +230,9 @@ int createWithArgs(void* (*f) ( void *), void * arg){
 		queue_init(thread_queue);
 	}
 	// choose tid from the thread pool 
-	int tid = thread_pool;
-	thread_pool += 1;
+	//int tid = thread_pool;
+	//thread_pool += 1;
+	int tid = allocate_tid();
 	mythread * tp = ( mythread * ) malloc ( sizeof ( mythread ) ) ; 
 	tp -> thread_id = tid;
 	tp -> hasContext = 0;
@@ -227,6 +263,7 @@ void start()
 	int i ; 
 	ready_all_threads(thread_queue);
 	signal(SIGALRM, dispatch);
+	isSchedulerRunning =  1;
 	ualarm(5*SECOND, 5*SECOND);
 	i = sigsetjmp(main_buf, 1);
 	if ( i == 1)
@@ -278,13 +315,15 @@ void yield()
 void delete( int tid ) {
 	ualarm(0, 0);
 	delete_from_queue(thread_queue, tid);
+	thread_pool[tid] = 0;
 	ualarm(5*SECOND, 5*SECOND);
-
 }
 
 void calculate_stats(mythread * tp ) 
 {
 	statistics stat = tp -> stat; 
+	if ( stat.no_of_bursts == 0) 
+		return; 
 	stat.avg_execution_time = stat.total_exec_time / stat.no_of_bursts ;
 	stat.avg_waiting_time = stat.total_wait_time / stat.no_of_bursts;
 	tp -> stat = stat; 

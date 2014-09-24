@@ -2,15 +2,10 @@
 
 #define SECOND 10000
 
-void thread_within()
+void thread_infinite()
 {
 	int i=0;
 	while(1){
-		printf("id :%d,  thread_within: %d\n",getID(), i++);
-		if ( i == 10)
-			suspend(0);
-		if ( i == 130 ) 
-			resume(0);
 		usleep(SECOND);
 	}
 }
@@ -20,25 +15,15 @@ void f()
 	while(1){
 		printf("id :%d,  f: %d\n",getID(), i++);
 
-		if ( i == 250 ) 
+		tid = create(thread_infinite) ; 
+		run(tid);
+
+		if ( i == 100 ) 
 			break; 
 		usleep(SECOND);
 	}
 }
 
-void g()
-{
-	int i=0;
-	int res = *(int *)GetThreadResult(1);
-	printf("Result %d \n", res); 
-	while(1){
-		printf("id :%d,  g: %d\n",getID(), i++);
-		if ( i == 50 ) 
-			break; 
-		usleep(SECOND);
-	}
-	clean();
-}
 typedef struct tp {
 	int * arr; 
 	int no; 
@@ -48,7 +33,7 @@ void * func ( void * arg ){
 	int * sum ; 
 	sum = (int * ) malloc ( sizeof ( int )) ;
 	int i ; 
-	for ( i =0 ; i < 0xfffffff; i++);
+	for ( i =0 ; i < 0xffff; i++);
 
 	for  ( i =0 ; i < p.no ; i++)
 		*sum += p.arr[i];
@@ -56,6 +41,29 @@ void * func ( void * arg ){
 	return sum;
 }
 
+void g()
+{
+	int i=0, count =0, previous = -1 ;
+	int a[] = {1, 2, 3};
+	xx p; 
+	p.arr = a; 
+	p.no = 3;
+	while(1){
+		int tid = createWithArgs(func, &p);
+		create(thread_infinite);
+		if ( previous != -1 ) 
+			delete( previous);
+		run(tid);
+		previous = tid;
+		int * res = ( int * ) GetThreadResult(tid);
+		printf( " Result of tid : %d is %d \n",tid,  *res) ; 
+		//print_stat(search_by_tid(thread_queue, tid));
+		count++;
+		if ( count == 250 ) 
+			break;
+	}
+	clean();
+}
 
 main()
 {
@@ -70,6 +78,5 @@ main()
 	//int tid0 = create(f);
 	int tid1 = create(g);
 
-	int t1 = createWithArgs(func, &p);
 	start();
 }
